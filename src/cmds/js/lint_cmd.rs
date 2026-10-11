@@ -275,7 +275,7 @@ fn find_project_eslint_bin(cwd: Option<&Path>) -> Option<PathBuf> {
     loop {
         let bin_dir = current.join("node_modules").join(".bin");
         let candidates = if cfg!(windows) {
-            vec!["eslint.exe", "eslint"]
+            vec!["eslint.cmd", "eslint.exe", "eslint"]
         } else {
             vec!["eslint"]
         };
@@ -682,6 +682,20 @@ mod tests {
     fn missing_project_eslint_is_not_mistaken_for_a_local_binary() {
         let temp = tempfile::tempdir().unwrap();
         assert_eq!(find_project_eslint_bin(Some(temp.path())), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn resolves_windows_project_eslint_cmd_shim() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("app");
+        let bin_dir = temp.path().join("node_modules/.bin");
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        let local_eslint = bin_dir.join("eslint.cmd");
+        std::fs::write(&local_eslint, "@echo off\r\nexit /b 0\r\n").unwrap();
+
+        assert_eq!(find_project_eslint_bin(Some(&project)), Some(local_eslint));
     }
 
     #[test]
